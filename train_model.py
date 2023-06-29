@@ -11,6 +11,8 @@ D_RESID = 512
 N_FEATURES = 1024
 D_MLP_RATIO = 4
 
+BINARY_FEATS = False
+
 if __name__ == "__main__":
     generator = RandomDatasetGenerator(
         N_FEATURES,
@@ -18,7 +20,8 @@ if __name__ == "__main__":
         5,
         0.99,
         True,
-        "cuda"
+        "cuda",
+        BINARY_FEATS
     )
 
     initial_features = generate_rand_feats(D_RESID, N_FEATURES, "cuda")

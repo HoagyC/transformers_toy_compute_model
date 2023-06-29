@@ -15,6 +15,7 @@ class RandomDatasetGenerator(Generator):
     feature_prob_decay: float
     correlated: bool
     device: Union[torch.device, str]
+    binary_feats: bool
 
     frac_nonzero: float = field(init=False)
     decay: TensorType["n_ground_truth_components"] = field(init=False)
@@ -42,6 +43,7 @@ class RandomDatasetGenerator(Generator):
                 self.frac_nonzero,
                 self.decay,
                 self.device,
+                self.binary_feats,
             )
         else:
             _, data = generate_rand_dataset(
@@ -49,6 +51,7 @@ class RandomDatasetGenerator(Generator):
                 self.batch_size,
                 self.component_probs,
                 self.device,
+                self.binary_feats,
             )
         return data.to(self.t_type)
 
@@ -72,9 +75,12 @@ def generate_rand_dataset(
         data_zero,
     )  # dim: dataset_size x n_ground_truth_components
 
-    # Multiply by a 2D random matrix of feature strengths
-    feature_strengths = torch.rand((dataset_size, n_ground_truth_components), device=device)
-    dataset = (dataset_codes * feature_strengths)
+    if not binary_feats:
+        # Multiply by a 2D random matrix of feature strengths
+        feature_strengths = torch.rand((dataset_size, n_ground_truth_components), device=device)
+        dataset = (dataset_codes * feature_strengths)
+    else:
+        dataset = dataset_codes
 
     return dataset_codes, dataset
 
@@ -86,6 +92,7 @@ def generate_correlated_dataset(
     frac_nonzero: float,
     decay: TensorType["n_ground_truth_components"],
     device: Union[torch.device, str],
+    binary_feats: bool,
 ):
     # Get a correlated gaussian sample
     mvn = torch.distributions.MultivariateNormal(loc=torch.zeros(n_ground_truth_components, device=device), covariance_matrix=corr_matrix)
@@ -119,9 +126,12 @@ def generate_correlated_dataset(
     random_index = torch.randint(low=0, high=n_ground_truth_components, size=(zero_sample_index.shape[0],)).to(dataset_codes.device)
     dataset_codes[zero_sample_index, random_index] = 1.0
 
-    # Multiply by a 2D random matrix of feature strengths
-    feature_strengths = torch.rand((dataset_size, n_ground_truth_components), device=device)
-    dataset = (dataset_codes * feature_strengths)
+    if not binary_feats:
+        # Multiply by a 2D random matrix of feature strengths
+        feature_strengths = torch.rand((dataset_size, n_ground_truth_components), device=device)
+        dataset = (dataset_codes * feature_strengths)
+    else:
+        dataset = dataset_codes
 
     return dataset_codes, dataset
 
