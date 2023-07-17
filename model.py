@@ -23,26 +23,19 @@ class Transformer(nn.Module):
         x = x + x_
         return x
 
-def computation_objective(in_features, target_features):
-    # in_features: [n_features, d_resid]
-    # target_features: [n_features, d_resid]
-    def go(model, x):
-        # x: [batch_size, n_features]
-        resid_in = torch.einsum("ij,bi->bj", in_features, x)
-        resid_target = resid_in + torch.einsum("ij,bi->bj", target_features, x)
-        return F.mse_loss(model(resid_in), resid_target)
-    
-    return go
 
-def train_model(in_features, target_features, dataset, steps = 5000):
-    model = Transformer(in_features.shape[1]).to("cuda")
+def train_model(in_features, target_features, dataset, steps = 5000, device="cuda"):
+    model = Transformer(in_features.shape[1]).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    lossfn = computation_objective(in_features, target_features)
     for i, batch in enumerate(itertools.islice(dataset, steps)):
         optimizer.zero_grad()
-        loss = lossfn(model, batch)
+        resid_in = torch.einsum("ij,bi->bj", in_features, batch)
+        resid_target = resid_in + torch.einsum("ij,bi->bj", target_features, batch)
+        loss = F.mse_loss(model(resid_in), resid_target)
         loss.backward()
         optimizer.step()
+        if i % 1000 == 0:
+            print(batch, resid_in, resid_target, loss)
         if i % 100 == 0:
             print(f"Step {i}: {loss.item()}")
     

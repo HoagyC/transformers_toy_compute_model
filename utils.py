@@ -5,8 +5,8 @@ import sys
 from typing import Optional
 from pathlib import Path
 
-VAST_NUM = 5
-VAST_PORT = 34871
+VAST_NUM = 4
+VAST_PORT = 37182
 SSH_DIRECTORY = "sparse_coding"
 dest_addr = f"root@ssh{VAST_NUM}.vast.ai"
 SSH_PYTHON = "/opt/conda/bin/python"

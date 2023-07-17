@@ -24,6 +24,7 @@ class MultiProbe(nn.Module):
     def forward(self, x):
         # x: [batch_size, d_activation]
         return self.probe(x)
+    
 
 @dataclass
 class ActivationDataset(Generator):
@@ -73,9 +74,11 @@ if __name__ == "__main__":
         generator = data["generator"]
         input_features = data["input_feats"]
         target_features = data["target_feats"]
+    
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     transformer_state_dict = torch.load("transformer.pt")
-    transformer_model = Transformer(input_features.shape[1]).to("cuda")
+    transformer_model = Transformer(input_features.shape[1]).to(device)
     transformer_model.load_state_dict(transformer_state_dict)
 
     MLP_WIDTH = transformer_model.l2.in_features
@@ -83,7 +86,7 @@ if __name__ == "__main__":
 
     print(MLP_WIDTH, N_FEATURES)
 
-    probe = MultiProbe(N_FEATURES, MLP_WIDTH).to("cuda")
+    probe = MultiProbe(N_FEATURES, MLP_WIDTH).to(device)
 
     print(probe.probe)
 

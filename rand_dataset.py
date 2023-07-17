@@ -63,15 +63,16 @@ def generate_rand_dataset(
     dataset_size: int,
     feature_probs: TensorType["n_ground_truth_components"],
     device: Union[torch.device, str],
+    binary_feats: bool=False,
 ):
     dataset_thresh = torch.rand(dataset_size, n_ground_truth_components, device=device)
-    dataset_values = torch.rand(dataset_size, n_ground_truth_components, device=device)
-
+    
+    data_ones = torch.ones_like(dataset_thresh, device=device)
     data_zero = torch.zeros_like(dataset_thresh, device=device)
 
     dataset_codes = torch.where(
         dataset_thresh <= feature_probs,
-        dataset_values,
+        data_ones,
         data_zero,
     )  # dim: dataset_size x n_ground_truth_components
 
