@@ -3,3 +3,5 @@
 dataset.pt
 transformer.pt
 probe.pt
+outputs
+*.png

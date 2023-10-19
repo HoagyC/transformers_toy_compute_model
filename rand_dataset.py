@@ -7,6 +7,7 @@ import os
 
 from dataclasses import dataclass, field
 
+
 @dataclass
 class RandomDatasetGenerator(Generator):
     n_ground_truth_components: int
@@ -26,7 +27,9 @@ class RandomDatasetGenerator(Generator):
         self.frac_nonzero = self.feature_num_nonzero / self.n_ground_truth_components
 
         # Define the probabilities of each component being included in the data
-        self.decay = torch.tensor([self.feature_prob_decay**i for i in range(self.n_ground_truth_components)]).to(self.device)  # FIXME: 1 / i
+        self.decay = torch.tensor([self.feature_prob_decay**i for i in range(self.n_ground_truth_components)]).to(
+            self.device
+        )  # FIXME: 1 / i
 
         if self.correlated:
             self.corr_matrix = generate_corr_matrix(self.n_ground_truth_components, device=self.device)
@@ -58,15 +61,16 @@ class RandomDatasetGenerator(Generator):
     def throw(self, type: Any = None, value: Any = None, traceback: Any = None) -> None:
         raise StopIteration
 
+
 def generate_rand_dataset(
     n_ground_truth_components: int,  #
     dataset_size: int,
     feature_probs: TensorType["n_ground_truth_components"],
     device: Union[torch.device, str],
-    binary_feats: bool=False,
+    binary_feats: bool = False,
 ):
     dataset_thresh = torch.rand(dataset_size, n_ground_truth_components, device=device)
-    
+
     data_ones = torch.ones_like(dataset_thresh, device=device)
     data_zero = torch.zeros_like(dataset_thresh, device=device)
 
@@ -79,7 +83,7 @@ def generate_rand_dataset(
     if not binary_feats:
         # Multiply by a 2D random matrix of feature strengths
         feature_strengths = torch.rand((dataset_size, n_ground_truth_components), device=device)
-        dataset = (dataset_codes * feature_strengths)
+        dataset = dataset_codes * feature_strengths
     else:
         dataset = dataset_codes
 
@@ -96,7 +100,10 @@ def generate_correlated_dataset(
     binary_feats: bool,
 ):
     # Get a correlated gaussian sample
-    mvn = torch.distributions.MultivariateNormal(loc=torch.zeros(n_ground_truth_components, device=device), covariance_matrix=corr_matrix)
+    mvn = torch.distributions.MultivariateNormal(
+        loc=torch.zeros(n_ground_truth_components, device=device),
+        covariance_matrix=corr_matrix,
+    )
     corr_thresh = mvn.sample()
 
     # Take the CDF of that sample.
@@ -124,13 +131,15 @@ def generate_correlated_dataset(
     )
     # Ensure there are no datapoints w/ 0 features
     zero_sample_index = (dataset_codes.count_nonzero(dim=1) == 0).nonzero()[:, 0]
-    random_index = torch.randint(low=0, high=n_ground_truth_components, size=(zero_sample_index.shape[0],)).to(dataset_codes.device)
+    random_index = torch.randint(low=0, high=n_ground_truth_components, size=(zero_sample_index.shape[0],)).to(
+        dataset_codes.device
+    )
     dataset_codes[zero_sample_index, random_index] = 1.0
 
     if not binary_feats:
         # Multiply by a 2D random matrix of feature strengths
         feature_strengths = torch.rand((dataset_size, n_ground_truth_components), device=device)
-        dataset = (dataset_codes * feature_strengths)
+        dataset = dataset_codes * feature_strengths
     else:
         dataset = dataset_codes
 
@@ -150,7 +159,9 @@ def generate_rand_feats(
     return feats_tensor
 
 
-def generate_corr_matrix(num_feats: int, device: Union[torch.device, str]) -> TensorType["n_ground_truth_components", "n_ground_truth_components"]:
+def generate_corr_matrix(
+    num_feats: int, device: Union[torch.device, str]
+) -> TensorType["n_ground_truth_components", "n_ground_truth_components"]:
     # Create a correlation matrix
     corr_matrix = np.random.rand(num_feats, num_feats)
     corr_matrix = (corr_matrix + corr_matrix.T) / 2
