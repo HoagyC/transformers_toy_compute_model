@@ -4,4 +4,5 @@ dataset.pt
 transformer.pt
 probe.pt
 outputs
+inputs
 *.png
