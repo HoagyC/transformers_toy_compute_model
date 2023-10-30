@@ -426,13 +426,24 @@ def write_lw_100_example():
     plt.colorbar()
     st.pyplot(plt, use_container_width=True)
 
-    st.write(f"Max non-homogeneity score: {np.max(nonhomogs):.2}")
     
-    # Now we test linearity 
-    n_feats = 5
-    lin_test = test_linearity(feature_vectors=feature_vectors, feature_ndxs=list(range(n_feats)), n_samples = 500)
-    print(lin_test)
-    st.write(f"Linearity test score: {lin_test:.10}")
+def load_sae_features():
+    load_location = "inputs/untied_mlp_l2_r2_e59/learned_dicts.pt"
+    import sys
+    sys.path.append("../sparse_coding")
+    sae_list = torch.load(load_location, map_location=torch.device('cpu'))
+    sae = sae_list[4][0]
+    features = sae.get_learned_dict() # n_features x model_dim (4096 x 2048)
+    return features 
+    
+
+def get_pythia_data(batch_size: int = 256, layer = 2, layer_loc: str = "mlp"):
+    model = HookedTransformer.from_pretrained("EleutherAI/pythia-70m-deduped", device="cpu")
+    line_dataset = load_dataset("NeelNanda/pile-10k")
+    dataloader = DataLoader(
+        line_dataset,
+        batch_size=batch_size,
+    )
     
 
 
