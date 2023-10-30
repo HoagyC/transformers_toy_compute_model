@@ -287,21 +287,143 @@ def main():
     fig = plot_response_curves(probed_input, probed_output, vector_levels, feature_ndx)
     st.pyplot(fig)
 
-    # Plotting the non-homogeneity scores
+def write_lw_100_example():
+    # First writing the case with a single feature
     plt.clf()
-    fig, ax = plt.subplots(figsize=(5, 5))
-    n_samples = 500  # lower since we're doing a large number of tests
+    fig, axs = plt.subplots(2, 2, figsize=(10, 8))
+    input_vals = torch.linspace(-5, 5, 1000)
+    single_feat = torch.zeros(100)
+    single_feat[0] = 1
+    spread_feat = torch.ones(100)
+    spread_feat /= spread_feat.norm()
 
-    nonhomogs = get_nonhomog_grid(n_samples, n_feats, n_on, feature_vectors, nonlin_fn, feature_ndx)
-    cax = ax.imshow(nonhomogs, vmin=0, vmax=0.2)
-    ax.set_xlabel("Feature input scale")
-    ax.set_ylabel("MLP Bias")
-    ax.set_title("Non-homogeneity measure by feature scale and mlp bias.")
-    ax.set_xticks(list(range(10)))
-    ax.set_yticks(list(range(8)))
-    ax.set_xticklabels([2**x for x in range(10)])
-    ax.set_yticklabels([-(2**x) for x in range(8)])
-    fig.colorbar(cax, shrink=0.3, aspect=15 * 0.5)
+    single_input_vals = torch.outer(input_vals, single_feat)
+    spread_input_vals = torch.outer(input_vals, spread_feat)
+    
+    single_input_postnonlin = F.gelu(single_input_vals)
+    spread_input_postnonlin = F.gelu(spread_input_vals)
+    
+    single_in_single_out = single_input_postnonlin @ single_feat
+    single_in_spread_out = single_input_postnonlin @ spread_feat
+    spread_in_single_out = spread_input_postnonlin @ single_feat
+    spread_in_spread_out = spread_input_postnonlin @ spread_feat
+    
+    axs[0][0].plot(input_vals, single_in_single_out)
+    axs[0][0].set_title("Single input, single output")
+    axs[0][1].plot(input_vals, single_in_spread_out)
+    axs[0][1].set_title("Single input, spread output")
+    axs[1][0].plot(input_vals, spread_in_single_out)
+    axs[1][0].set_title("Spread input, single output")
+    axs[1][1].plot(input_vals, spread_in_spread_out)
+    axs[1][1].set_title("Spread input, spread output")
+
+    st.write(single_in_single_out.min(), spread_in_spread_out.min())
+    
+    st.pyplot(plt, use_container_width=True)
+    
+    plt.clf()
+    small_input_range = torch.linspace(-5, 5, 100)
+    large_input_range = small_input_range * 10
+    small_single_input_vals = torch.outer(small_input_range, single_feat)
+    large_spread_input_vals = torch.outer(large_input_range, spread_feat)
+    single_in_single_out_small = F.gelu(small_single_input_vals) @ single_feat
+    spread_in_spread_out_large = F.gelu(large_spread_input_vals) @ spread_feat
+    
+    fig, axs = plt.subplots(1, 2, figsize=(10, 4))
+    axs[0].plot(small_input_range, single_in_single_out_small)
+    axs[0].set_title("Single input, single output, small range")
+    axs[1].plot(large_input_range, spread_in_spread_out_large)
+    axs[1].set_title("Spread input, spread output, large range")
+    
+    st.pyplot(plt, use_container_width=True)
+    
+    # Now I will show what happens when the elements of the spread feature vector are a mixture of positive and negative
+    plt.clf()
+    input_vals = large_input_range
+    n_negs = [0, 10, 25, 40, 50, 75, 90, 100]
+    
+    n_graph_rows = (len(n_negs) // 4) + (len(n_negs) % 4 > 0)
+    fig, axs = plt.subplots(n_graph_rows, min(4, len(n_negs)), figsize=(12, 4 * n_graph_rows))
+    for i, n_neg in enumerate(n_negs):
+        spread_feat = torch.ones(100)
+        spread_feat[:n_neg] = -1
+        spread_feat /= spread_feat.norm()
+        spread_input_vals = torch.outer(input_vals, spread_feat)
+        spread_input_postnonlin = F.gelu(spread_input_vals)
+        spread_output = spread_input_postnonlin @ spread_feat
+        axs[i // 4][i % 4].plot(input_vals, spread_output)
+        axs[i // 4][i % 4].set_title(f"{n_neg} negative elements")
+    
+    st.pyplot(plt, use_container_width=True)
+    
+    # Ok now we're going to look at how two different features interact
+    feat_a = torch.zeros(100)
+    feat_a[:50] = 1
+    feat_a /= feat_a.norm()
+    
+    feat_b = torch.ones(100)
+    # feat_b[:25] = 1
+    # feat_b[75:] = 1
+    feat_b /= feat_b.norm()
+    
+    # looking at the interaction between the two features, in the output space of the first feature
+    input_range = small_input_range * np.sqrt(50) # use the sqrt of the number of elements to keep the scale of the non-linearity constant
+    input_grid = torch.stack(torch.meshgrid(input_range, input_range), dim=-1)
+    input_vecs = input_grid.reshape(-1, 2) @ torch.stack([feat_a, feat_b], dim=0)
+    output_vecs = F.gelu(input_vecs)
+    output_feats = (output_vecs @ feat_a).reshape(100, 100)
+    plt.clf()
+    plt.imshow(output_feats)
+    plt.colorbar()
+    st.pyplot(plt, use_container_width=True)
+
+    # Now repeating the experiment, but with only 2 dimensions
+    feat_a = torch.zeros(2)
+    feat_a[0] = 1
+    
+    feat_b = torch.ones(2)
+    feat_b /= feat_b.norm()
+    
+    input_range = small_input_range * np.sqrt(2) # use the sqrt of the number of elements to keep the scale of the non-linearity constant
+    input_grid = torch.stack(torch.meshgrid(input_range, input_range), dim=-1)
+    input_vecs = input_grid.reshape(-1, 2) @ torch.stack([feat_a, feat_b], dim=0)
+    output_vecs = F.gelu(input_vecs)
+    output_feats = (output_vecs @ feat_a).reshape(100, 100)
+    plt.clf()
+    plt.imshow(output_feats)
+    plt.colorbar()
+    st.pyplot(plt, use_container_width=True)
+    
+    # Now testing the case where we have two features with 50 positive and 50 negative elements, to see if there's interesting interactions
+    feat_a = torch.ones(100)
+    neg_feats = torch.randperm(100)[:50]
+    feat_a[neg_feats] = -1
+    feat_a /= feat_a.norm()
+    
+    feat_b = torch.ones(100)
+    neg_feats = torch.randperm(100)[:50]
+    feat_b[neg_feats] = -1
+    feat_b /= feat_b.norm()
+    
+    st.write(f"Experimenting with 50 positive elements and 50 negative elements randomly across 2 features")
+    input_range = small_input_range * np.sqrt(100) # use the sqrt of the number of elements to keep the scale of the non-linearity constant
+    input_grid = torch.stack(torch.meshgrid(input_range, input_range), dim=-1)
+    input_vecs = input_grid.reshape(-1, 2) @ torch.stack([feat_a, feat_b], dim=0)
+    output_vecs = F.gelu(input_vecs)
+    output_feats = (output_vecs @ feat_a).reshape(100, 100)
+    mixed_feature = feat_a + feat_b
+    mixed_feature /= mixed_feature.norm()
+    mixed_feats = (output_vecs @ mixed_feature).reshape(100, 100)
+    plt.clf()
+    plt.imshow(output_feats)
+    plt.title("Output of feature A")
+    plt.colorbar()
+    st.pyplot(plt, use_container_width=True)
+
+    plt.clf()
+    plt.imshow(mixed_feats)
+    plt.title("Output of Feature A + Feature B")
+    plt.colorbar()
     st.pyplot(plt, use_container_width=True)
 
     st.write(f"Max non-homogeneity score: {np.max(nonhomogs):.2}")
