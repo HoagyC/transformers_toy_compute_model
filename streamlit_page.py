@@ -570,13 +570,13 @@ def write_homogeneity_testing():
     
     # plot the number of features required to get a homogeneity score above 0.1 and an interference score below 0.3 
     # as a function of the number of dimensions per feature, using separate axes on the left and right of the plot.
-    fig, ax_left = plt.subplots()
+    fig, ax_left = plt.subplots(figsize=(10, 6))
     ax_left.plot(nonhomog_grid.index, most_feats_while_nonhomog, color="blue")
     ax_left.set_xlabel("Dimensions per Feature")
     ax_left.set_ylabel("Maximum active feats without becoming homogeneous", color="blue")
     ax_right = ax_left.twinx()
     ax_right.plot(interference_table.index, most_feats_without_interfering, color="red")
-    ax_right.set_ylabel("Maximum umber of features without limited interefence", color="red")
+    ax_right.set_ylabel("Maximum number of features with only limited interefence", color="red")
     # set all axes to be log scale
     ax_left.set_xscale("log")
     ax_right.set_yscale("log")
@@ -630,57 +630,57 @@ def write_linearity_test():
     score = lin_reg.score(vector_levels[-test_n:], dimension_outputs[-test_n:])
     st.write(f"Linear regression score: {score:.2}")
     
-def write_lw_1k_example():
-    # First writing the case with a single feature
+def write_lw_100_example():
+    # First writing the case with a aligned feature
     plt.clf()
     fig, axs = plt.subplots(2, 2, figsize=(10, 8))
     input_vals = torch.linspace(-5, 5, 1000)
-    single_feat = torch.zeros(100)
-    single_feat[0] = 1
-    spread_feat = torch.ones(100)
-    spread_feat /= spread_feat.norm()
+    aligned_feat = torch.zeros(100)
+    aligned_feat[0] = 1
+    distributed_feat = torch.ones(100)
+    distributed_feat /= distributed_feat.norm()
 
-    single_input_vals = torch.outer(input_vals, single_feat)
-    spread_input_vals = torch.outer(input_vals, spread_feat)
+    aligned_input_vals = torch.outer(input_vals, aligned_feat)
+    distributed_input_vals = torch.outer(input_vals, distributed_feat)
     
-    single_input_postnonlin = F.gelu(single_input_vals)
-    spread_input_postnonlin = F.gelu(spread_input_vals)
+    aligned_input_postnonlin = F.gelu(aligned_input_vals)
+    distributed_input_postnonlin = F.gelu(distributed_input_vals)
     
-    single_in_single_out = single_input_postnonlin @ single_feat
-    single_in_spread_out = single_input_postnonlin @ spread_feat
-    spread_in_single_out = spread_input_postnonlin @ single_feat
-    spread_in_spread_out = spread_input_postnonlin @ spread_feat
+    aligned_in_aligned_out = aligned_input_postnonlin @ aligned_feat
+    aligned_in_distributed_out = aligned_input_postnonlin @ distributed_feat
+    distributed_in_aligned_out = distributed_input_postnonlin @ aligned_feat
+    distributed_in_distributed_out = distributed_input_postnonlin @ distributed_feat
     
-    axs[0][0].plot(input_vals, single_in_single_out)
-    axs[0][0].set_title("Single input, single output")
-    axs[0][1].plot(input_vals, single_in_spread_out)
-    axs[0][1].set_title("Single input, spread output")
-    axs[1][0].plot(input_vals, spread_in_single_out)
-    axs[1][0].set_title("Spread input, single output")
-    axs[1][1].plot(input_vals, spread_in_spread_out)
-    axs[1][1].set_title("Spread input, spread output")
+    axs[0][0].plot(input_vals, aligned_in_aligned_out)
+    axs[0][0].set_title("aligned input, aligned output")
+    axs[0][1].plot(input_vals, aligned_in_distributed_out)
+    axs[0][1].set_title("aligned input, distributed output")
+    axs[1][0].plot(input_vals, distributed_in_aligned_out)
+    axs[1][0].set_title("distributed input, aligned output")
+    axs[1][1].plot(input_vals, distributed_in_distributed_out)
+    axs[1][1].set_title("distributed input, distributed output")
 
-    st.write(single_in_single_out.min(), spread_in_spread_out.min())
+    st.write(aligned_in_aligned_out.min(), distributed_in_distributed_out.min())
     
     st.pyplot(plt, use_container_width=True)
     
     plt.clf()
     small_input_range = torch.linspace(-5, 5, 100)
     large_input_range = small_input_range * 10
-    small_single_input_vals = torch.outer(small_input_range, single_feat)
-    large_spread_input_vals = torch.outer(large_input_range, spread_feat)
-    single_in_single_out_small = F.gelu(small_single_input_vals) @ single_feat
-    spread_in_spread_out_large = F.gelu(large_spread_input_vals) @ spread_feat
+    small_aligned_input_vals = torch.outer(small_input_range, aligned_feat)
+    large_distributed_input_vals = torch.outer(large_input_range, distributed_feat)
+    aligned_in_aligned_out_small = F.gelu(small_aligned_input_vals) @ aligned_feat
+    distributed_in_distributed_out_large = F.gelu(large_distributed_input_vals) @ distributed_feat
     
     fig, axs = plt.subplots(1, 2, figsize=(10, 4))
-    axs[0].plot(small_input_range, single_in_single_out_small)
-    axs[0].set_title("Single input, single output, small range")
-    axs[1].plot(large_input_range, spread_in_spread_out_large)
-    axs[1].set_title("Spread input, spread output, large range")
+    axs[0].plot(small_input_range, aligned_in_aligned_out_small)
+    axs[0].set_title("aligned input, aligned output, small range")
+    axs[1].plot(large_input_range, distributed_in_distributed_out_large)
+    axs[1].set_title("distributed input, distributed output, large range")
     
     st.pyplot(plt, use_container_width=True)
     
-    # Now I will show what happens when the elements of the spread feature vector are a mixture of positive and negative
+    # Now I will show what happens when the elements of the distributed feature vector are a mixture of positive and negative
     plt.clf()
     input_vals = large_input_range
     n_negs = [0, 10, 25, 40, 50, 75, 90, 100]
@@ -688,13 +688,13 @@ def write_lw_1k_example():
     n_graph_rows = (len(n_negs) // 4) + (len(n_negs) % 4 > 0)
     fig, axs = plt.subplots(n_graph_rows, min(4, len(n_negs)), figsize=(12, 4 * n_graph_rows))
     for i, n_neg in enumerate(n_negs):
-        spread_feat = torch.ones(100)
-        spread_feat[:n_neg] = -1
-        spread_feat /= spread_feat.norm()
-        spread_input_vals = torch.outer(input_vals, spread_feat)
-        spread_input_postnonlin = F.gelu(spread_input_vals)
-        spread_output = spread_input_postnonlin @ spread_feat
-        axs[i // 4][i % 4].plot(input_vals, spread_output)
+        distributed_feat = torch.ones(100)
+        distributed_feat[:n_neg] = -1
+        distributed_feat /= distributed_feat.norm()
+        distributed_input_vals = torch.outer(input_vals, distributed_feat)
+        distributed_input_postnonlin = F.gelu(distributed_input_vals)
+        distributed_output = distributed_input_postnonlin @ distributed_feat
+        axs[i // 4][i % 4].plot(input_vals, distributed_output)
         axs[i // 4][i % 4].set_title(f"{n_neg} negative elements")
     
     st.pyplot(plt, use_container_width=True)
@@ -788,10 +788,14 @@ def get_pythia_data(batch_size: int = 256, layer = 2, layer_loc: str = "mlp"):
         batch_size=batch_size,
     )
 
-
-def main():
-    # write_lw_1k_example()
+def write_all_lw_graphs():
+    write_lw_100_example()
     write_homogeneity_testing()
+    
+def main():
+    write_all_lw_graphs()
+
+
 
 if __name__ == "__main__":
     main()
